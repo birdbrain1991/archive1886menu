@@ -68,7 +68,8 @@ var ph = document.getElementById('placeholder');
 STORIES.forEach(function(name, i) {
   var btn = document.createElement('button');
   btn.className = 'story-btn';
-  btn.textContent = 'Story ' + (i + 1);
+  var title = name.replace(/^Story\d+-/, '').replace('.pdf', '').replace(/_/g, ' ');
+  btn.textContent = title;
   btn.onclick = function() {
     document.querySelectorAll('.story-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
