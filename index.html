@@ -61,14 +61,14 @@ window.addEventListener('pageshow', function() {
 });
 
 var BASE = 'https://birdbrain1991.github.io/archive1886/';
-var STORIES = ['Story1.pdf'];
+var STORIES = ['Story1-Lorem_Ipsum.pdf'];
 var list = document.getElementById('story-list');
 var frame = document.getElementById('pdf-frame');
 var ph = document.getElementById('placeholder');
 STORIES.forEach(function(name, i) {
   var btn = document.createElement('button');
   btn.className = 'story-btn';
-  var title = name.replace(/^Story\d+-/, '').replace('.pdf', '').replace(/_/g, ' ');
+  var title = name.replace(/^[^-]+-/, '').replace(/\.pdf$/i, '').replace(/_/g, ' ');
   btn.textContent = title;
   btn.onclick = function() {
     document.querySelectorAll('.story-btn').forEach(function(b) { b.classList.remove('active'); });
