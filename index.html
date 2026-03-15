@@ -247,22 +247,6 @@ try {
   // ── EASTER EGG — click on Stephansdom ──
   var cathWorldPos = new THREE.Vector3();
 
-
-  // DEBUG — show cathedral screen position
-  var dbg = document.createElement('div');
-  dbg.style.cssText = 'position:fixed;width:20px;height:20px;background:red;border-radius:50%;z-index:999;pointer-events:none;transform:translate(-50%,-50%)';
-  document.body.appendChild(dbg);
-
-  setInterval(function() {
-    cathG.getWorldPosition(cathWorldPos);
-    var projected = cathWorldPos.clone().project(cam);
-    var rect = document.getElementById('bg').getBoundingClientRect();
-    var sx = (projected.x + 1) / 2 * rect.width;
-    var sy = (1 - (projected.y + 1) / 2) * rect.height;
-    dbg.style.left = sx + 'px';
-    dbg.style.top = sy + 'px';
-  }, 100);
-
   document.addEventListener('click', function(e) {
     // Project cathG world position to screen
     cathG.getWorldPosition(cathWorldPos);
@@ -272,8 +256,7 @@ try {
     var dx = e.clientX - sx;
     var dy = e.clientY - sy;
     var dist = Math.sqrt(dx*dx + dy*dy);
-    console.log('dist:', dist);
-    if (dist < 80) {
+    if (dist < 23) {
       window.open('https://birdbrain1991.github.io/1886easteregg/', '_blank');
     }
   });
@@ -285,7 +268,7 @@ try {
     var sy = (1 - (projected.y + 1) / 2) * window.innerHeight;
     var dx = e.clientX - sx;
     var dy = e.clientY - sy;
-    document.body.style.cursor = Math.sqrt(dx*dx + dy*dy) < 80 ? 'pointer' : 'default';
+    document.body.style.cursor = Math.sqrt(dx*dx + dy*dy) < 23 ? 'pointer' : 'default';
   });
 
 
