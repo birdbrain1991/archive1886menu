@@ -72,9 +72,7 @@ STORIES.forEach(function(name, i) {
   btn.onclick = function() {
     document.querySelectorAll('.story-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    ph.style.display = 'none';
-    frame.style.display = 'block';
-    frame.src = BASE + name;
+    window.open(BASE + name, '_blank');
   };
   list.appendChild(btn);
 });
