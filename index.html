@@ -42,7 +42,6 @@ canvas#bg{position:fixed;inset:0;z-index:0}
   <div id="story-list"></div>
 </div>
 <div id="viewer">
-  <div id="placeholder">SELECT A STORY</div>
   <iframe id="pdf-frame"></iframe>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -248,6 +247,64 @@ try {
 
 
 
+
+  // ── MAP TITLE LABEL ──
+  (function() {
+    var canvas = document.createElement('canvas');
+    canvas.width = 2048; canvas.height = 512;
+    var ctx = canvas.getContext('2d');
+
+    // Black background
+    ctx.fillStyle = 'rgba(8,7,5,0.92)';
+    ctx.fillRect(0, 0, 2048, 512);
+
+    // Outer border
+    ctx.strokeStyle = 'rgba(200,168,110,0.7)';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(12, 12, 2024, 488);
+
+    // Inner border
+    ctx.strokeStyle = 'rgba(200,168,110,0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(24, 24, 2000, 464);
+
+    // Decorative line top
+    ctx.strokeStyle = 'rgba(200,168,110,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(80,90); ctx.lineTo(1968,90); ctx.stroke();
+
+    // Main title
+    ctx.fillStyle = 'rgba(220,185,120,0.95)';
+    ctx.font = 'italic 148px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Vienna, Austria', 1024, 210);
+
+    // Year
+    ctx.font = '118px Georgia, serif';
+    ctx.fillStyle = 'rgba(220,185,120,0.95)';
+    ctx.fillText('1886', 1024, 320);
+
+    // Decorative line bottom
+    ctx.strokeStyle = 'rgba(200,168,110,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(80,370); ctx.lineTo(1968,370); ctx.stroke();
+
+    // Subtitle — italic, smaller
+    ctx.font = 'italic 94px Georgia, serif';
+    ctx.fillStyle = 'rgba(220,185,120,0.95)';
+    ctx.fillText('well, kinda ... similar-ish', 1024, 455);
+
+    var tex = new THREE.CanvasTexture(canvas);
+    var mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(17, 6), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(-11.5, 5.5, 7.5);
+    sc.add(mesh);
+  })();
+
   // Stars
   var sGeo = new THREE.BufferGeometry();
   var sPos = [];
@@ -298,9 +355,9 @@ try {
   }
 
   // Three zeppelins at different heights, speeds, paths
-  var zep1 = makeZeppelin(-52, 20, -8,  1.2, 0.22, 0.8);
-  var zep2 = makeZeppelin(-30, 25, 5,   0.7, 0.17, 1.1);
-  var zep3 = makeZeppelin( 10, 18, -18, 0.9, 0.28, 0.6);
+  var zep1 = makeZeppelin(-35, 18, 2,   1.2, 0.22, 0.8);
+  var zep2 = makeZeppelin(-20, 22, 8,   0.7, 0.17, 1.1);
+  var zep3 = makeZeppelin(  5, 20, -5,  0.9, 0.28, 0.6);
 
   // ── CLOUDS ──
   function makeCloud(cx, cy, cz, scale) {
@@ -324,9 +381,9 @@ try {
     return g;
   }
 
-  var cloud1 = makeCloud(-15, 28, -5,  4.5);
-  var cloud2 = makeCloud( 12, 32, 8,   3.8);
-  var cloud3 = makeCloud(-2,  26, -20, 5.0);
+  var cloud1 = makeCloud(-12, 24, 0,   4.5);
+  var cloud2 = makeCloud(  5, 27, 6,   3.8);
+  var cloud3 = makeCloud( -8, 25, -8,  5.0);
 
   var clk = new THREE.Clock();
   rdr.setAnimationLoop(function() {
