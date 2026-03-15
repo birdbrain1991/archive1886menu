@@ -255,23 +255,99 @@ try {
   sGeo.setAttribute('position', new THREE.Float32BufferAttribute(sPos, 3));
   sc.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xc8c0b0, size: 0.28, transparent: true, opacity: 0.55 })));
 
-  // Zeppelin
-  var zepG = new THREE.Group();
-  var hull = new THREE.Mesh(new THREE.SphereGeometry(1,12,6), new THREE.MeshLambertMaterial({ color: 0x8a7848 }));
-  hull.scale.set(4.2, 1, 1);
-  zepG.add(hull);
-  var gond = new THREE.Mesh(new THREE.BoxGeometry(2.2,0.6,0.7), new THREE.MeshLambertMaterial({ color: 0x3a2e1c }));
-  gond.position.y = -1.1;
-  zepG.add(gond);
-  zepG.position.set(-48, 22, -10);
-  sc.add(zepG);
+  // ── ZEPPELINS ──
+  function makeZeppelin(sx, sy, sz, speed, bobFreq, bobAmp) {
+    var g = new THREE.Group();
+    // Hull
+    var h = new THREE.Mesh(new THREE.SphereGeometry(1,16,8),
+      new THREE.MeshLambertMaterial({color:0x8a7848, emissive:0x1a1408}));
+    h.scale.set(4.5, 1, 1);
+    g.add(h);
+    // Tail fins
+    var finMat = new THREE.MeshLambertMaterial({color:0x6a5c38, emissive:0x0e0c06});
+    var finShape = new THREE.Shape();
+    finShape.moveTo(0,0); finShape.lineTo(-1.5,0); finShape.lineTo(-1.2,0.8); finShape.closePath();
+    var finGeo = new THREE.ShapeGeometry(finShape);
+    var finTop = new THREE.Mesh(finGeo, finMat);
+    finTop.position.set(-3.8, 0.9, 0); g.add(finTop);
+    var finBot = new THREE.Mesh(finGeo, finMat);
+    finBot.position.set(-3.8, -0.9, 0); finBot.scale.y = -1; g.add(finBot);
+    var finR = new THREE.Mesh(finGeo, finMat);
+    finR.position.set(-3.8, 0, 0.9); finR.rotation.y = Math.PI/2; g.add(finR);
+    // Gondola
+    var gond = new THREE.Mesh(new THREE.BoxGeometry(2.4,0.55,0.65),
+      new THREE.MeshLambertMaterial({color:0x2e2214, emissive:0x080604}));
+    gond.position.y = -1.15;
+    g.add(gond);
+    // Gondola windows
+    var winMat = new THREE.MeshBasicMaterial({color:0xd4a840});
+    for (var wi = -0.7; wi <= 0.7; wi += 0.35) {
+      var win = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,0.66), winMat);
+      win.position.set(wi, -1.05, 0); g.add(win);
+    }
+    // Rope lines (gondola to hull)
+    var ropeMat = new THREE.LineBasicMaterial({color:0x5a4a28, transparent:true, opacity:0.6});
+    [[-0.8,0.8],[0,0.8],[0.8,0.8]].forEach(function(rx) {
+      var rpts = [new THREE.Vector3(rx[0],-0.95,0), new THREE.Vector3(rx[0],-1.12,0)];
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rpts), ropeMat));
+    });
+    g.position.set(sx, sy, sz);
+    g.userData = {speed: speed, bobFreq: bobFreq, bobAmp: bobAmp, baseY: sy};
+    sc.add(g);
+    return g;
+  }
+
+  // Three zeppelins at different heights, speeds, paths
+  var zep1 = makeZeppelin(-52, 20, -8,  1.2, 0.22, 0.8);
+  var zep2 = makeZeppelin(-30, 25, 5,   0.7, 0.17, 1.1);
+  var zep3 = makeZeppelin( 10, 18, -18, 0.9, 0.28, 0.6);
+
+  // ── CLOUDS ──
+  function makeCloud(cx, cy, cz, scale) {
+    var g = new THREE.Group();
+    var cMat = new THREE.MeshLambertMaterial({
+      color: 0xc8c0b0, transparent: true, opacity: 0.18, depthWrite: false
+    });
+    // Cluster of overlapping spheres
+    var blobs = [
+      [0,0,0,1.0], [1.4,0.3,0.2,0.8], [-1.3,0.2,-0.1,0.75],
+      [0.5,0.7,0.5,0.7], [-0.4,0.6,-0.4,0.65], [0.9,-0.1,0.8,0.6]
+    ];
+    blobs.forEach(function(b) {
+      var blob = new THREE.Mesh(new THREE.SphereGeometry(b[3]*scale, 8, 6), cMat.clone());
+      blob.position.set(b[0]*scale, b[1]*scale, b[2]*scale);
+      g.add(blob);
+    });
+    g.position.set(cx, cy, cz);
+    g.userData = {baseY: cy, drift: (Math.random()-0.5)*0.04};
+    sc.add(g);
+    return g;
+  }
+
+  var cloud1 = makeCloud(-15, 28, -5,  4.5);
+  var cloud2 = makeCloud( 12, 32, 8,   3.8);
+  var cloud3 = makeCloud(-2,  26, -20, 5.0);
 
   var clk = new THREE.Clock();
   rdr.setAnimationLoop(function() {
     var dt = clk.getDelta();
-    zepG.position.x += 1.0 * dt;
-    if (zepG.position.x > 55) zepG.position.x = -55;
-    zepG.position.y = 22 + Math.sin(clk.getElapsedTime() * 0.22) * 0.7;
+    var t = clk.getElapsedTime();
+
+    // Animate zeppelins
+    [zep1, zep2, zep3].forEach(function(z) {
+      z.position.x += z.userData.speed * dt;
+      if (z.position.x > 60) z.position.x = -60;
+      z.position.y = z.userData.baseY + Math.sin(t * z.userData.bobFreq) * z.userData.bobAmp;
+    });
+
+    // Drift clouds slowly
+    [cloud1, cloud2, cloud3].forEach(function(c) {
+      c.position.x += c.userData.drift * dt;
+      c.position.y = c.userData.baseY + Math.sin(t * 0.08) * 0.4;
+      if (c.position.x > 40) c.position.x = -40;
+      if (c.position.x < -40) c.position.x = 40;
+    });
+
     rdr.render(sc, cam);
   });
 
