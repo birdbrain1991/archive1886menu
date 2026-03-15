@@ -162,21 +162,33 @@ try {
   // Neubau (VII) — orange, W strip
   makeDistrict([[-14.1,-5.2],[-23.5,-9.2],[-22.2,-10.9],[-17.8,-9.9],[-18.2,-7.8]], 2.0, 0x3a3020, 0x0e0c08);
 
-  // ── STREET OVERLAY — B&W image as texture on a 3D plane ──
-  var streetTex = new THREE.TextureLoader().load('https://birdbrain1991.github.io/archive1886menu/1000027578.jpg', function(tex) {
-    var planeW = 47.9, planeH = 50.7;
-    var planeMat = new THREE.MeshBasicMaterial({
-      map: tex,
-      transparent: true,
-      opacity: 0.55,
+  // ── STREET OVERLAY — live editable ──
+  var streetPlane = null;
+  var streetMat = null;
+  window.overlayParams = { x: -0.46, z: 0.04, w: 47.9, h: 50.7, rot: 0, opacity: 0.55 };
+
+  new THREE.TextureLoader().load('https://birdbrain1991.github.io/archive1886menu/1000027578.jpg', function(tex) {
+    streetMat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true,
+      opacity: window.overlayParams.opacity,
       blending: THREE.MultiplyBlending,
       depthWrite: false
     });
-    var planeMesh = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), planeMat);
-    planeMesh.rotation.x = -Math.PI / 2;
-    planeMesh.position.set(-0.46, 2.3, 0.04);
-    sc.add(planeMesh);
+    streetPlane = new THREE.Mesh(new THREE.PlaneGeometry(window.overlayParams.w, window.overlayParams.h), streetMat);
+    streetPlane.rotation.x = -Math.PI / 2;
+    streetPlane.rotation.z = 0;
+    streetPlane.position.set(window.overlayParams.x, 2.3, window.overlayParams.z);
+    sc.add(streetPlane);
   });
+
+  window.updateStreetPlane = function() {
+    if (!streetPlane) return;
+    streetPlane.position.set(window.overlayParams.x, 2.3, window.overlayParams.z);
+    streetPlane.rotation.z = window.overlayParams.rot * Math.PI / 180;
+    streetMat.opacity = window.overlayParams.opacity;
+    streetPlane.geometry.dispose();
+    streetPlane.geometry = new THREE.PlaneGeometry(window.overlayParams.w, window.overlayParams.h);
+  }
 
   // ── STEPHANSDOM — Innere Stadt center (0.7,-7.4) ──
   var cathG = new THREE.Group();
@@ -265,5 +277,47 @@ try {
 
 } catch(e) { console.error('BG:', e); }
 </script>
+
+<div id="overlay-editor" style="position:fixed;bottom:20px;right:20px;z-index:100;background:rgba(10,9,14,0.92);border:1px solid rgba(200,168,110,0.3);padding:16px;font-family:'IM Fell English',serif;color:rgba(200,168,110,0.85);font-size:11px;letter-spacing:2px;min-width:260px;border-radius:2px;">
+  <div style="margin-bottom:12px;font-size:10px;letter-spacing:4px;color:rgba(200,168,110,0.45);">STREET OVERLAY</div>
+  <div style="margin-bottom:8px;">X <input type="range" id="sl-x" min="-30" max="30" step="0.1" value="-0.46" style="width:160px;vertical-align:middle;"> <span id="val-x">-0.46</span></div>
+  <div style="margin-bottom:8px;">Z <input type="range" id="sl-z" min="-30" max="30" step="0.1" value="0.04" style="width:160px;vertical-align:middle;"> <span id="val-z">0.04</span></div>
+  <div style="margin-bottom:8px;">W <input type="range" id="sl-w" min="20" max="80" step="0.5" value="47.9" style="width:160px;vertical-align:middle;"> <span id="val-w">47.9</span></div>
+  <div style="margin-bottom:8px;">H <input type="range" id="sl-h" min="20" max="80" step="0.5" value="50.7" style="width:160px;vertical-align:middle;"> <span id="val-h">50.7</span></div>
+  <div style="margin-bottom:8px;">ROT <input type="range" id="sl-rot" min="-45" max="45" step="0.5" value="0" style="width:160px;vertical-align:middle;"> <span id="val-rot">0</span>°</div>
+  <div style="margin-bottom:12px;">OP <input type="range" id="sl-op" min="0" max="1" step="0.05" value="0.55" style="width:160px;vertical-align:middle;"> <span id="val-op">0.55</span></div>
+  <div style="font-size:9px;letter-spacing:3px;color:rgba(200,168,110,0.35);word-break:break-all;" id="values-display">x:-0.46 z:0.04 w:47.9 h:50.7 rot:0 op:0.55</div>
+</div>
+<script>
+(function() {
+  var sliders = [
+    {id:'sl-x', val:'val-x', key:'x'},
+    {id:'sl-z', val:'val-z', key:'z'},
+    {id:'sl-w', val:'val-w', key:'w'},
+    {id:'sl-h', val:'val-h', key:'h'},
+    {id:'sl-rot', val:'val-rot', key:'rot'},
+    {id:'sl-op', val:'val-op', key:'opacity'},
+  ];
+  function updateDisplay() {
+    var p = window.overlayParams;
+    if (!p) return;
+    document.getElementById('values-display').textContent =
+      'x:'+p.x+' z:'+p.z+' w:'+p.w+' h:'+p.h+' rot:'+p.rot+' op:'+p.opacity;
+  }
+  sliders.forEach(function(s) {
+    var el = document.getElementById(s.id);
+    el.addEventListener('input', function() {
+      var v = parseFloat(el.value);
+      document.getElementById(s.val).textContent = v;
+      if (window.overlayParams) {
+        window.overlayParams[s.key] = v;
+        if (window.updateStreetPlane) window.updateStreetPlane();
+        updateDisplay();
+      }
+    });
+  });
+})();
+</script>
+
 </body>
 </html>
