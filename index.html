@@ -67,7 +67,7 @@ var BASE = 'https://birdbrain1991.github.io/archive1886/';
 var STORIES = [
   { file: 'Story1-Important_Notice.pdf',         location: null },
   { file: 'Story2-Prologue_The_Nachtrapp.pdf',   location: { x: -11.0, z: -1.0, label: null } },
-  { file: 'Story3-A_Whole_Bloody_Affair.pdf',    location: { x: -10.5, z: -32,  label: 'Nussdorf / Klosterneuburg' } }
+  { file: 'Story3-A_Whole_Bloody_Affair.pdf',    locations: [ { x: -15.3, z: -19.7, label: 'Nussdorf' }, { x: -18.5, z: -41.0, label: 'Klosterneuburg' } ] }
 ];
 
 var list = document.getElementById('story-list');
@@ -75,42 +75,38 @@ var frame = document.getElementById('pdf-frame');
 var ph = document.getElementById('placeholder');
 
 // ── LIGHT BEAM system ──
+var activeBeams = [];
+var activeLabels = [];
 var activeBeam = null;
 var activeLabel = null;
 
 function removeBeam() {
-  if (activeBeam)  { sc.remove(activeBeam);  activeBeam  = null; }
-  if (activeLabel) { sc.remove(activeLabel); activeLabel = null; }
+  activeBeams.forEach(function(b) { sc.remove(b); });
+  activeLabels.forEach(function(l) { sc.remove(l); });
+  activeBeams = []; activeLabels = [];
+  activeBeam = null; activeLabel = null;
 }
 
-function spawnBeam(loc) {
-  removeBeam();
-  if (!loc) return;
-
+function spawnOneBeam(loc) {
   var beamGroup = new THREE.Group();
   beamGroup.position.set(loc.x, 0, loc.z);
 
-  // Outer glow column
   var beamGeo = new THREE.CylinderGeometry(0.18, 0.6, 30, 12, 1, true);
   var beamMat = new THREE.MeshBasicMaterial({
     color: 0xd4a840, transparent: true, opacity: 0.15,
     side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
   });
   var beam = new THREE.Mesh(beamGeo, beamMat);
-  beam.position.y = 15;
-  beamGroup.add(beam);
+  beam.position.y = 15; beamGroup.add(beam);
 
-  // Bright inner core
   var coreGeo = new THREE.CylinderGeometry(0.05, 0.16, 30, 8, 1, true);
   var coreMat = new THREE.MeshBasicMaterial({
     color: 0xffe8a0, transparent: true, opacity: 0.55,
     side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
   });
   var core = new THREE.Mesh(coreGeo, coreMat);
-  core.position.y = 15;
-  beamGroup.add(core);
+  core.position.y = 15; beamGroup.add(core);
 
-  // Ground ring
   var ringGeo = new THREE.RingGeometry(0.3, 1.6, 24);
   var ringMat = new THREE.MeshBasicMaterial({
     color: 0xd4a840, transparent: true, opacity: 0.4,
@@ -118,45 +114,60 @@ function spawnBeam(loc) {
   });
   var ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.12;
-  beamGroup.add(ring);
+  ring.position.y = 0.12; beamGroup.add(ring);
 
   sc.add(beamGroup);
-  activeBeam = beamGroup;
-  beamGroup._t0 = performance.now();
+  activeBeams.push(beamGroup);
 
-  // Off-map label
   if (loc.label) {
     var lc = document.createElement('canvas');
-    lc.width = 512; lc.height = 96;
+    lc.width = 1024; lc.height = 200;
     var lctx = lc.getContext('2d');
-    lctx.fillStyle = 'rgba(10,9,6,0.85)';
-    lctx.fillRect(0, 0, 512, 96);
-    lctx.strokeStyle = 'rgba(200,168,110,0.75)';
-    lctx.lineWidth = 2;
-    lctx.strokeRect(3, 3, 506, 90);
-    lctx.fillStyle = 'rgba(220,185,120,0.95)';
-    lctx.font = 'italic 34px Georgia, serif';
-    lctx.textAlign = 'center';
-    lctx.fillText(loc.label, 256, 58);
+    lctx.clearRect(0, 0, 1024, 200);
+    lctx.font = 'bold 144px "IM Fell English", Georgia, serif';
+    lctx.textAlign = 'left';
+    lctx.textBaseline = 'middle';
+    lctx.fillStyle = 'rgba(255, 220, 120, 1.0)';
+    lctx.fillText(loc.label, 40, 100);
     var ltex = new THREE.CanvasTexture(lc);
-    var lmat = new THREE.MeshBasicMaterial({ map: ltex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.35), lmat);
-    lmesh.position.set(loc.x + 4.5, 9, loc.z);
-    lmesh.rotation.y = 0.25;
+    ltex.minFilter = THREE.LinearFilter;
+    ltex.magFilter = THREE.LinearFilter;
+    var lmat = new THREE.MeshBasicMaterial({
+      map: ltex, transparent: true, depthWrite: false,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.5), lmat);
+    lmesh.rotation.y = 0;
+    lmesh.position.set(loc.x + 8, 7, loc.z);
     sc.add(lmesh);
-    activeLabel = lmesh;
+    activeLabels.push(lmesh);
   }
 }
 
+function spawnBeam(story) {
+  removeBeam();
+  var locs = story ? (story.locations || (story.location ? [story.location] : [])) : [];
+  locs.forEach(function(loc) { spawnOneBeam(loc); });
+  activeBeam = activeBeams[0] || null;
+}
 window._beamPulse = function(t) {
-  if (!activeBeam) return;
-  activeBeam.children.forEach(function(c, idx) {
-    if (!c.material || c.material.opacity === undefined) return;
-    if (idx === 0) c.material.opacity = 0.12 + Math.sin(t * 2.0) * 0.05;
-    if (idx === 1) c.material.opacity = 0.45 + Math.sin(t * 2.4) * 0.10;
-    if (idx === 2) c.material.opacity = 0.30 + Math.sin(t * 1.6) * 0.10;
+  activeBeams.forEach(function(activeBeam, bi) {
+    var offset = bi * 0.8; // slight phase offset between beams
+    activeBeam.children.forEach(function(c, idx) {
+      if (!c.material || c.material.opacity === undefined) return;
+      if (idx === 0) c.material.opacity = 0.12 + Math.sin(t * 2.0 + offset) * 0.05;
+      if (idx === 1) c.material.opacity = 0.45 + Math.sin(t * 2.4 + offset) * 0.10;
+      if (idx === 2) c.material.opacity = 0.30 + Math.sin(t * 1.6 + offset) * 0.10;
+    });
   });
+  if (activeBeams.length === 0) {
+  }
+  // Pulse nussdorf outline in sync with beam
+  if (nussdorfLines && nussdorfLines.length && nussdorfLines[0].material.opacity > 0) {
+    nussdorfLines[0].material.opacity = 0.18 + Math.sin(t * 2.0) * 0.06;
+    nussdorfLines[1].material.opacity = 0.50 + Math.sin(t * 2.4) * 0.10;
+    nussdorfLines[2].material.opacity = 0.30 + Math.sin(t * 1.6) * 0.08;
+  }
 };
 
 STORIES.forEach(function(story, i) {
@@ -164,11 +175,64 @@ STORIES.forEach(function(story, i) {
   btn.className = 'story-btn';
   var title = story.file.replace(/^[^-]+-/, '').replace(/\.pdf$/i, '').replace(/_/g, ' ');
   btn.textContent = title;
-  btn.onmouseenter = function() {
-    spawnBeam(story.location);
-  };
+  btn.onmouseenter = (function(st, idx) {
+    return function() {
+      spawnBeam(st);
+      if (window._showNussdorf) window._showNussdorf(idx === 2);
+      var locs = st ? (st.locations || (st.location ? [st.location] : [])) : [];
+      if (!locs.length) return;
+
+      if (locs.length > 1) {
+        // Bounding box of all locations → zoom out to fit both
+        var minX = Math.min.apply(null, locs.map(function(l){return l.x;}));
+        var maxX = Math.max.apply(null, locs.map(function(l){return l.x;}));
+        var minZ = Math.min.apply(null, locs.map(function(l){return l.z;}));
+        var maxZ = Math.max.apply(null, locs.map(function(l){return l.z;}));
+        var cx = (minX + maxX) / 2;
+        var cz = (minZ + maxZ) / 2;
+        var span = Math.max(maxX - minX, Math.abs(maxZ - minZ));
+        camAnimateTo(
+          { x: cx + 2, y: 80 + span * 1.1, z: cz + 45 + span * 0.7 },
+          { x: cx,     y: 0,               z: cz }
+        );
+        // Pendulum after initial zoom settles
+        clearTimeout(window._pendulumTimer);
+        window._pendulumLocs = locs;
+        window._pendulumIdx = 0;
+        function pendulumStep() {
+          if (!window._pendulumLocs) return;
+          var loc = window._pendulumLocs[window._pendulumIdx];
+          camAnimateTo(
+            { x: loc.x + 2, y: 58, z: loc.z + 30 },
+            { x: loc.x,     y: 0,  z: loc.z }
+          );
+          window._pendulumIdx = (window._pendulumIdx + 1) % window._pendulumLocs.length;
+          window._pendulumTimer = setTimeout(pendulumStep, 2200);
+        }
+        window._pendulumTimer = setTimeout(pendulumStep, 400);
+      } else {
+        var loc = locs[0];
+        if (loc.z <= -10) {
+          camAnimateTo(
+            { x: loc.x + 2, y: 58, z: loc.z + 32 },
+            { x: loc.x,     y: 0,  z: loc.z }
+          );
+        } else {
+          camAnimateTo(
+            { x: loc.x + 2, y: 40, z: loc.z + 18 },
+            { x: loc.x,     y: 0,  z: loc.z }
+          );
+        }
+      }
+    };
+  })(story, i);
   btn.onmouseleave = function() {
     removeBeam();
+    if (window._showNussdorf) window._showNussdorf(false);
+    // Cancel pendulum
+    clearTimeout(window._pendulumTimer);
+    window._pendulumLocs = null;
+    camHome();
   };
   btn.onclick = function() {
     document.querySelectorAll('.story-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -193,6 +257,48 @@ try {
   var cam = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.5, 400);
   cam.position.set(-8, 55, 25);
   cam.lookAt(-8, 0, 3);
+
+  // ── CAMERA ANIMATION state ──
+  var camAnim = {
+    active: false,
+    t: 0,
+    duration: 1.2,
+    fromPos: { x: -8, y: 55, z: 25 },
+    toPos:   { x: -8, y: 55, z: 25 },
+    fromLook: { x: -8, y: 0, z: 3 },
+    toLook:   { x: -8, y: 0, z: 3 }
+  };
+  var CAM_HOME_POS  = { x: -8,  y: 55, z: 25 };
+  var CAM_HOME_LOOK = { x: -8,  y: 0,  z: 3  };
+
+  function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  function camAnimateTo(toPos, toLook) {
+    camAnim.fromPos  = { x: cam.position.x, y: cam.position.y, z: cam.position.z };
+    camAnim.fromLook = { x: cam._lookX || CAM_HOME_LOOK.x, y: 0, z: cam._lookZ || CAM_HOME_LOOK.z };
+    camAnim.toPos    = toPos;
+    camAnim.toLook   = toLook;
+    camAnim.t        = 0;
+    camAnim.active   = true;
+  }
+
+  function camHome() {
+    camAnimateTo(CAM_HOME_POS, CAM_HOME_LOOK);
+  }
+
+  window._camTick = function(dt) {
+    if (!camAnim.active) return;
+    camAnim.t += dt / camAnim.duration;
+    if (camAnim.t >= 1) { camAnim.t = 1; camAnim.active = false; }
+    var e = easeInOut(camAnim.t);
+    cam.position.x = camAnim.fromPos.x + (camAnim.toPos.x - camAnim.fromPos.x) * e;
+    cam.position.y = camAnim.fromPos.y + (camAnim.toPos.y - camAnim.fromPos.y) * e;
+    cam.position.z = camAnim.fromPos.z + (camAnim.toPos.z - camAnim.fromPos.z) * e;
+    var lx = camAnim.fromLook.x + (camAnim.toLook.x - camAnim.fromLook.x) * e;
+    var lz = camAnim.fromLook.z + (camAnim.toLook.z - camAnim.fromLook.z) * e;
+    cam._lookX = lx; cam._lookZ = lz;
+    cam.lookAt(lx, 0, lz);
+  };
 
   window.addEventListener('resize', function() {
     cam.aspect = window.innerWidth / window.innerHeight;
@@ -343,6 +449,144 @@ try {
   cathG.add(cathGlow);
 
   sc.add(cathG);
+
+  // ── NUSSDORF glowing wireframe — Vorort außerhalb der 1850er Grenzen ──
+  // Nördlich des Alsergrund, erst 1892 eingemeindet (19. Bezirk Döbling)
+  var nussdorfLines = [];
+  (function() {
+    var pts = [
+      [-18.0, -16.5],
+      [-19.0, -19.5],
+      [-17.5, -22.5],
+      [-13.5, -23.0],
+      [-11.5, -20.0],
+      [-12.5, -16.5]
+    ];
+
+    // Build 3 line layers: outer glow (wide+dim), mid, bright core
+    // Each is a closed polygon slightly above ground
+    var layers = [
+      { y: 1.05, color: 0xd4a840, opacity: 0.0, _base: 0.22 },  // outer warm glow
+      { y: 1.15, color: 0xffd870, opacity: 0.0, _base: 0.55 },  // bright core
+      { y: 1.25, color: 0xffe8a0, opacity: 0.0, _base: 0.35 },  // top shimmer
+    ];
+
+    layers.forEach(function(layer) {
+      var verts = pts.map(function(p) { return new THREE.Vector3(p[0], layer.y, -p[1]); });
+      verts.push(verts[0].clone());
+      var geo = new THREE.BufferGeometry().setFromPoints(verts);
+      var mat = new THREE.LineBasicMaterial({
+        color: layer.color,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      mat._base = layer._base;
+      var line = new THREE.Line(geo, mat);
+      sc.add(line);
+      nussdorfLines.push(line);
+    });
+  })();
+
+  window._showNussdorf = function(visible) {
+    nussdorfLines.forEach(function(l) {
+      l.material.opacity = visible ? l.material._base : 0.0;
+    });
+  };
+
+  // ── DONAU / DANUBE — permanent glowing blue river band ──
+  // Flows from Nussdorf NW (x=-14,z=20) diagonally SE past Leopoldstadt to exit map NE
+  // Approximated as wide glowing line with multiple layers like the beam
+  (function() {
+    // River path points [x, z] — follows the Danube roughly from Nussdorf NE corner
+    // through the map edge. z-axis is inverted in Three.js (negative z = north on map)
+    // Donau 1850 (unreguliert): mehrere Arme, Hauptarm floss NORDÖSTLICH
+    // der Leopoldstadt-Insel. Leopoldstadt = Insel zwischen Donaukanal (W) u. Donau (NE).
+    // Hauptarm: von Nussdorf nach NE, bogenförmig nordöstlich um die Leopoldstadt-Insel,
+    // dann SE aus der Karte raus (Richtung Prater/Kaisermühlen)
+    // Leopoldstadt NE-Ecke in 3D: ca. x=+23, z=-11
+    var riverPts = [
+      new THREE.Vector3(-14.0, 0.5, 22.0),   // bei Nussdorf / Brigittaspitz
+      new THREE.Vector3(  2.0, 0.5, 30.0),   // biegt weit nach NE — breit, unreguliert
+      new THREE.Vector3( 18.0, 0.5, 28.0),   // NE der Leopoldstadt-Insel (Brigittenau)
+      new THREE.Vector3( 32.0, 0.5, 14.0),   // weiter NE, außerhalb Leopoldstadt
+      new THREE.Vector3( 40.0, 0.5,  0.0),   // nach SE biegend, aus Karte raus
+      new THREE.Vector3( 44.0, 0.5,-14.0),   // Prater/Kaisermühlen, Kartenrand
+    ];
+
+    // Three layers: wide outer glow, mid, bright core
+    var riverLayers = [
+      { width: 7.0, color: 0x0830a0, opacity: 0.14 },  // outer glow — wide unregulated Donau
+      { width: 4.0, color: 0x1850d0, opacity: 0.32 },  // main body
+      { width: 1.8, color: 0x60a0ff, opacity: 0.55 },  // bright core channel
+    ];
+
+    riverLayers.forEach(function(layer) {
+      var geo = new THREE.BufferGeometry().setFromPoints(riverPts);
+      // Use linewidth via material — won't be >1 in WebGL, so we stack planes instead
+      // Build a ribbon mesh along the path
+      var positions = [];
+      var indices = [];
+      var hw = layer.width / 2;
+      for (var i = 0; i < riverPts.length; i++) {
+        var p = riverPts[i];
+        // Direction vector along river
+        var dir;
+        if (i === 0) {
+          dir = new THREE.Vector3().subVectors(riverPts[1], riverPts[0]).normalize();
+        } else if (i === riverPts.length - 1) {
+          dir = new THREE.Vector3().subVectors(riverPts[i], riverPts[i-1]).normalize();
+        } else {
+          dir = new THREE.Vector3().subVectors(riverPts[i+1], riverPts[i-1]).normalize();
+        }
+        // Perpendicular in XZ plane
+        var perp = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+        positions.push(
+          p.x + perp.x * hw, p.y, p.z + perp.z * hw,
+          p.x - perp.x * hw, p.y, p.z - perp.z * hw
+        );
+        if (i < riverPts.length - 1) {
+          var base = i * 2;
+          indices.push(base, base+1, base+2, base+1, base+3, base+2);
+        }
+      }
+      var ribbonGeo = new THREE.BufferGeometry();
+      ribbonGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      ribbonGeo.setIndex(indices);
+      var mat = new THREE.MeshBasicMaterial({
+        color: layer.color,
+        transparent: true,
+        opacity: layer.opacity,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      sc.add(new THREE.Mesh(ribbonGeo, mat));
+    });
+
+    // Danube label — flat on ground, same style as Vienna Austria label
+    var lc = document.createElement('canvas');
+    lc.width = 512; lc.height = 96;
+    var lctx = lc.getContext('2d');
+    lctx.clearRect(0, 0, 512, 96);
+    lctx.font = 'italic bold 56px Georgia, serif';
+    lctx.textAlign = 'left';
+    lctx.textBaseline = 'middle';
+    lctx.fillStyle = 'rgba(100, 180, 255, 1.0)';
+    lctx.fillText('Donau / Danube', 10, 48);
+    var ltex = new THREE.CanvasTexture(lc);
+    ltex.minFilter = THREE.LinearFilter;
+    var lmat = new THREE.MeshBasicMaterial({
+      map: ltex, transparent: true, depthWrite: false,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.8), lmat);
+    lmesh.rotation.x = -Math.PI / 2;
+    lmesh.rotation.z = -0.35; // angle to follow NE-SW river direction
+    lmesh.position.set(44.0, 0.8, -8.0);  // außerhalb Karte, NE
+    sc.add(lmesh);
+  })();
 
   // ── EASTER EGG — click on Stephansdom ──
   var cathWorldPos = new THREE.Vector3();
@@ -534,6 +778,7 @@ try {
     });
 
     if (window._beamPulse) window._beamPulse(t);
+    if (window._camTick) window._camTick(dt);
     rdr.render(sc, cam);
   });
 
