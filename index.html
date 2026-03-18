@@ -61,23 +61,119 @@ window.addEventListener('pageshow', function() {
 });
 
 var BASE = 'https://birdbrain1991.github.io/archive1886/';
-var STORIES = ['Story1-Important_Notice.pdf',
-	       'Story2-Prologue_The_Nachtrapp.pdf',
-	       'Story3-A_Whole_Bloody_Affair.pdf'
+
+// x = West/East on map, z = North/South (negative z = further north/up on map)
+// Innere Stadt center ~x=-11.5, z=0.7 | Nussdorf far north of map | Klosterneuburg even further
+var STORIES = [
+  { file: 'Story1-Important_Notice.pdf',         location: null },
+  { file: 'Story2-Prologue_The_Nachtrapp.pdf',   location: { x: -11.0, z: -1.0, label: null } },
+  { file: 'Story3-A_Whole_Bloody_Affair.pdf',    location: { x: -10.5, z: -32,  label: 'Nussdorf / Klosterneuburg' } }
 ];
 
 var list = document.getElementById('story-list');
 var frame = document.getElementById('pdf-frame');
 var ph = document.getElementById('placeholder');
-STORIES.forEach(function(name, i) {
+
+// ── LIGHT BEAM system ──
+var activeBeam = null;
+var activeLabel = null;
+
+function removeBeam() {
+  if (activeBeam)  { sc.remove(activeBeam);  activeBeam  = null; }
+  if (activeLabel) { sc.remove(activeLabel); activeLabel = null; }
+}
+
+function spawnBeam(loc) {
+  removeBeam();
+  if (!loc) return;
+
+  var beamGroup = new THREE.Group();
+  beamGroup.position.set(loc.x, 0, loc.z);
+
+  // Outer glow column
+  var beamGeo = new THREE.CylinderGeometry(0.18, 0.6, 30, 12, 1, true);
+  var beamMat = new THREE.MeshBasicMaterial({
+    color: 0xd4a840, transparent: true, opacity: 0.15,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  var beam = new THREE.Mesh(beamGeo, beamMat);
+  beam.position.y = 15;
+  beamGroup.add(beam);
+
+  // Bright inner core
+  var coreGeo = new THREE.CylinderGeometry(0.05, 0.16, 30, 8, 1, true);
+  var coreMat = new THREE.MeshBasicMaterial({
+    color: 0xffe8a0, transparent: true, opacity: 0.55,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  var core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.y = 15;
+  beamGroup.add(core);
+
+  // Ground ring
+  var ringGeo = new THREE.RingGeometry(0.3, 1.6, 24);
+  var ringMat = new THREE.MeshBasicMaterial({
+    color: 0xd4a840, transparent: true, opacity: 0.4,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  var ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.12;
+  beamGroup.add(ring);
+
+  sc.add(beamGroup);
+  activeBeam = beamGroup;
+  beamGroup._t0 = performance.now();
+
+  // Off-map label
+  if (loc.label) {
+    var lc = document.createElement('canvas');
+    lc.width = 512; lc.height = 96;
+    var lctx = lc.getContext('2d');
+    lctx.fillStyle = 'rgba(10,9,6,0.85)';
+    lctx.fillRect(0, 0, 512, 96);
+    lctx.strokeStyle = 'rgba(200,168,110,0.75)';
+    lctx.lineWidth = 2;
+    lctx.strokeRect(3, 3, 506, 90);
+    lctx.fillStyle = 'rgba(220,185,120,0.95)';
+    lctx.font = 'italic 34px Georgia, serif';
+    lctx.textAlign = 'center';
+    lctx.fillText(loc.label, 256, 58);
+    var ltex = new THREE.CanvasTexture(lc);
+    var lmat = new THREE.MeshBasicMaterial({ map: ltex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.35), lmat);
+    lmesh.position.set(loc.x + 4.5, 9, loc.z);
+    lmesh.rotation.y = 0.25;
+    sc.add(lmesh);
+    activeLabel = lmesh;
+  }
+}
+
+window._beamPulse = function(t) {
+  if (!activeBeam) return;
+  activeBeam.children.forEach(function(c, idx) {
+    if (!c.material || c.material.opacity === undefined) return;
+    if (idx === 0) c.material.opacity = 0.12 + Math.sin(t * 2.0) * 0.05;
+    if (idx === 1) c.material.opacity = 0.45 + Math.sin(t * 2.4) * 0.10;
+    if (idx === 2) c.material.opacity = 0.30 + Math.sin(t * 1.6) * 0.10;
+  });
+};
+
+STORIES.forEach(function(story, i) {
   var btn = document.createElement('button');
   btn.className = 'story-btn';
-  var title = name.replace(/^[^-]+-/, '').replace(/\.pdf$/i, '').replace(/_/g, ' ');
+  var title = story.file.replace(/^[^-]+-/, '').replace(/\.pdf$/i, '').replace(/_/g, ' ');
   btn.textContent = title;
+  btn.onmouseenter = function() {
+    spawnBeam(story.location);
+  };
+  btn.onmouseleave = function() {
+    removeBeam();
+  };
   btn.onclick = function() {
     document.querySelectorAll('.story-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    window.open(BASE + name, '_blank');
+    window.open(BASE + story.file, '_blank');
   };
   list.appendChild(btn);
 });
@@ -437,6 +533,7 @@ try {
       if (c.position.x < -40) c.position.x = 40;
     });
 
+    if (window._beamPulse) window._beamPulse(t);
     rdr.render(sc, cam);
   });
 
