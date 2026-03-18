@@ -67,7 +67,7 @@ var BASE = 'https://birdbrain1991.github.io/archive1886/';
 var STORIES = [
   { file: 'Story1-Important_Notice.pdf',         location: null },
   { file: 'Story2-Prologue_The_Nachtrapp.pdf',   location: { x: -11.0, z: -1.0, label: null } },
-  { file: 'Story3-A_Whole_Bloody_Affair.pdf',    locations: [ { x: -15.3, z: -19.7, label: 'Nussdorf' }, { x: -18.5, z: -41.0, label: 'Klosterneuburg' } ] }
+  { file: 'Story3-A_Whole_Bloody_Affair.pdf',    locations: [ { x: -17.7, z: -18.9, label: 'Nussdorf' }, { x: -18.7, z: -44.9, label: 'Klosterneuburg' } ] }
 ];
 
 var list = document.getElementById('story-list');
@@ -114,7 +114,7 @@ function spawnOneBeam(loc) {
   });
   var ring = new THREE.Mesh(ringGeo, ringMat);
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.12; beamGroup.add(ring);
+  ring.position.y = 2.5; beamGroup.add(ring);
 
   sc.add(beamGroup);
   activeBeams.push(beamGroup);
@@ -179,6 +179,7 @@ STORIES.forEach(function(story, i) {
     return function() {
       spawnBeam(st);
       if (window._showNussdorf) window._showNussdorf(idx === 2);
+      if (window._showKlosterneuburg) window._showKlosterneuburg(idx === 2);
       var locs = st ? (st.locations || (st.location ? [st.location] : [])) : [];
       if (!locs.length) return;
 
@@ -229,6 +230,7 @@ STORIES.forEach(function(story, i) {
   btn.onmouseleave = function() {
     removeBeam();
     if (window._showNussdorf) window._showNussdorf(false);
+    if (window._showKlosterneuburg) window._showKlosterneuburg(false);
     // Cancel pendulum
     clearTimeout(window._pendulumTimer);
     window._pendulumLocs = null;
@@ -455,20 +457,20 @@ try {
   var nussdorfLines = [];
   (function() {
     var pts = [
-      [-18.0, -16.5],
-      [-19.0, -19.5],
-      [-17.5, -22.5],
-      [-13.5, -23.0],
-      [-11.5, -20.0],
-      [-12.5, -16.5]
+      [-20.0, 16.5],   // SW - Heiligenstädter Str./Grinzingerstr.
+      [-21.0, 18.5],   // W  - Grinzingerstr.
+      [-20.0, 21.5],   // NW - Kahlenbergerdorf-Grenze
+      [-11.9, 21.5],   // N  - Donaukanal Westseite (Leo-NW x=-10.4 minus 1.5)
+      [-15.1, 19.0],   // NE - Donaukanal Westseite (Leo-NW x=-13.6 minus 1.5)
+      [-18.3, 16.5],   // SE - Heiligenstädter Str./Donaukanal
     ];
 
     // Build 3 line layers: outer glow (wide+dim), mid, bright core
     // Each is a closed polygon slightly above ground
     var layers = [
-      { y: 1.05, color: 0xd4a840, opacity: 0.0, _base: 0.22 },  // outer warm glow
-      { y: 1.15, color: 0xffd870, opacity: 0.0, _base: 0.55 },  // bright core
-      { y: 1.25, color: 0xffe8a0, opacity: 0.0, _base: 0.35 },  // top shimmer
+      { y: 2.65, color: 0xd4a840, opacity: 0.0, _base: 0.22 },  // outer warm glow
+      { y: 2.75, color: 0xffd870, opacity: 0.0, _base: 0.55 },  // bright core
+      { y: 2.85, color: 0xffe8a0, opacity: 0.0, _base: 0.35 },  // top shimmer
     ];
 
     layers.forEach(function(layer) {
@@ -489,6 +491,42 @@ try {
     });
   })();
 
+  // ── KLOSTERNEUBURG — permanenter Wireframe (gleicher Stil wie Nussdorf) ──
+  (function() {
+    var pts = [
+      [-23.7, 40.4],  // SW — Wienerwald
+      [-24.7, 44.9],  // W
+      [-23.2, 49.9],  // NW
+      [-17.2, 50.4],  // N
+      [-14.7, 46.9],  // NE — Donauseite
+      [-15.2, 40.4],  // SE — Grenze zu Wien/Nussdorf
+    ];
+    var layers = [
+      { y: 2.65, color: 0xd4a840, opacity: 0.0, _base: 0.22 },
+      { y: 2.75, color: 0xffd870, opacity: 0.0, _base: 0.55 },
+      { y: 2.85, color: 0xffe8a0, opacity: 0.0, _base: 0.35 },
+    ];
+    var klosLines = [];
+    layers.forEach(function(layer) {
+      var verts = pts.map(function(p) { return new THREE.Vector3(p[0], layer.y, -p[1]); });
+      verts.push(verts[0].clone());
+      var geo = new THREE.BufferGeometry().setFromPoints(verts);
+      var mat = new THREE.LineBasicMaterial({
+        color: layer.color, transparent: true, opacity: 0.0,
+        depthWrite: false, blending: THREE.AdditiveBlending
+      });
+      mat._base = layer._base;
+      var line = new THREE.Line(geo, mat);
+      sc.add(line);
+      klosLines.push(line);
+    });
+    window._showKlosterneuburg = function(visible) {
+      klosLines.forEach(function(l) {
+        l.material.opacity = visible ? l.material._base : 0.0;
+      });
+    };
+  })();
+
   window._showNussdorf = function(visible) {
     nussdorfLines.forEach(function(l) {
       l.material.opacity = visible ? l.material._base : 0.0;
@@ -501,19 +539,55 @@ try {
   (function() {
     // River path points [x, z] — follows the Danube roughly from Nussdorf NE corner
     // through the map edge. z-axis is inverted in Three.js (negative z = north on map)
-    // Donau 1850 (unreguliert): mehrere Arme, Hauptarm floss NORDÖSTLICH
-    // der Leopoldstadt-Insel. Leopoldstadt = Insel zwischen Donaukanal (W) u. Donau (NE).
-    // Hauptarm: von Nussdorf nach NE, bogenförmig nordöstlich um die Leopoldstadt-Insel,
-    // dann SE aus der Karte raus (Richtung Prater/Kaisermühlen)
-    // Leopoldstadt NE-Ecke in 3D: ca. x=+23, z=-11
+    // Donau 1850 — 3D Koordinaten (direkt, nicht pts-System):
+    // 3D_z negativ = Bildschirm-NORDEN (oben), positiv = Bildschirm-SÜDEN (unten)
+    // Leopoldstadt NW-Ecke (größtes pts[1]=24.7) → 3D: x=-6.3, z=-24.7
+    // Donau fließt nordöstlich davon: startet Nussdorf (x=-12,z=-24),
+    // biegt nach Osten, dann SE entlang rechtem Rand, aus Karte raus
+    // Donau 1850: von Nussdorf/Brigittaspitz (NW), Bogen nach O-NE,
+    // läuft nordöstlich der Donauinsel (Brigittenau) dann SE an rechtem Rand raus
+    // PLUS schmaler Arm zwischen Mainland-Leopoldstadt und Donauinsel (Donaukanal Nord)
     var riverPts = [
-      new THREE.Vector3(-14.0, 0.5, 22.0),   // bei Nussdorf / Brigittaspitz
-      new THREE.Vector3(  2.0, 0.5, 30.0),   // biegt weit nach NE — breit, unreguliert
-      new THREE.Vector3( 18.0, 0.5, 28.0),   // NE der Leopoldstadt-Insel (Brigittenau)
-      new THREE.Vector3( 32.0, 0.5, 14.0),   // weiter NE, außerhalb Leopoldstadt
-      new THREE.Vector3( 40.0, 0.5,  0.0),   // nach SE biegend, aus Karte raus
-      new THREE.Vector3( 44.0, 0.5,-14.0),   // Prater/Kaisermühlen, Kartenrand
+      new THREE.Vector3(-12.0, 2.6, -24.0),  // Nussdorf Einlauf
+      new THREE.Vector3(  2.0, 2.6, -35.0),  // Bogen nach O, nördlich der Insel
+      new THREE.Vector3( 22.0, 2.6, -34.0),  // NE der Insel (Brigittaspitz)
+      new THREE.Vector3( 30.0, 2.6, -26.0),  // biegt SE
+      new THREE.Vector3( 33.0, 2.6, -12.0),  // rechter Kartenrand
+      new THREE.Vector3( 30.0, 2.6,   4.0)   // Praterspitz
     ];
+
+    // Donaukanal-Arm: verbindet Mainland-NW mit Donauinsel-S (schmaler Arm)
+    // Mainland NW-Ecke: pts[-16,17.1] → 3D(-16,-17.1), pts[-6.3,24.7] → 3D(-6.3,-24.7)
+    // Insel SW: ungefähr 3D(-14,-17.5) bis 3D(-6,-17.5)
+    var innerArmPts = [
+      new THREE.Vector3( -6.3, 2.6, -24.7),  // Mainland Leopoldstadt NW-Ecke
+      new THREE.Vector3( -7.0, 2.6, -26.0),  // schmaler Spalt zur Insel SW
+      new THREE.Vector3( 18.0, 2.6, -26.0),  // entlang Südkante der Insel
+      new THREE.Vector3( 22.0, 2.6, -31.0),  // mündet in Donau bei Brigittaspitz NE
+    ];
+    var innerLayers = [
+      { width: 3.5, color: 0x0830a0, opacity: 0.12 },
+      { width: 2.0, color: 0x1850d0, opacity: 0.28 },
+      { width: 0.8, color: 0x60a0ff, opacity: 0.45 },
+    ];
+    innerLayers.forEach(function(layer) {
+      var hw = layer.width / 2;
+      var positions2 = [], indices2 = [];
+      for (var ii = 0; ii < innerArmPts.length; ii++) {
+        var pp = innerArmPts[ii];
+        var dir2;
+        if (ii === 0) dir2 = new THREE.Vector3().subVectors(innerArmPts[1], innerArmPts[0]).normalize();
+        else if (ii === innerArmPts.length-1) dir2 = new THREE.Vector3().subVectors(innerArmPts[ii], innerArmPts[ii-1]).normalize();
+        else dir2 = new THREE.Vector3().subVectors(innerArmPts[ii+1], innerArmPts[ii-1]).normalize();
+        var perp2 = new THREE.Vector3(-dir2.z, 0, dir2.x).normalize();
+        positions2.push(pp.x+perp2.x*hw, pp.y, pp.z+perp2.z*hw, pp.x-perp2.x*hw, pp.y, pp.z-perp2.z*hw);
+        if (ii < innerArmPts.length-1) { var b2=ii*2; indices2.push(b2,b2+1,b2+2,b2+1,b2+3,b2+2); }
+      }
+      var rg2 = new THREE.BufferGeometry();
+      rg2.setAttribute('position', new THREE.Float32BufferAttribute(positions2,3));
+      rg2.setIndex(indices2);
+      sc.add(new THREE.Mesh(rg2, new THREE.MeshBasicMaterial({color:layer.color,transparent:true,opacity:layer.opacity,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending})));
+    });
 
     // Three layers: wide outer glow, mid, bright core
     var riverLayers = [
@@ -583,8 +657,53 @@ try {
     });
     var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.8), lmat);
     lmesh.rotation.x = -Math.PI / 2;
-    lmesh.rotation.z = -0.35; // angle to follow NE-SW river direction
-    lmesh.position.set(44.0, 0.8, -8.0);  // außerhalb Karte, NE
+    lmesh.rotation.z = -1.3; // angle: mostly N-S along right edge
+    lmesh.position.set(32.0, 2.7, -22.0); // rechter Rand oben, über Textur
+    sc.add(lmesh);
+  })();
+
+  // ── DONAUINSEL (Brigittenau) — permanenter Wireframe ──
+  // Zwischen Donaukanal (SW) und Donau-Hauptarm (NE), nördlich der Mainland-Leopoldstadt
+  // pts-Koordinaten [x, z_map] wie makeDistrict
+  (function() {
+    var islandPts = [
+      [ -8.0, 26.0],  // SW — nördlich der Mainland-Leopoldstadt NW-Ecke (pts[1]=24.7)
+      [ 18.0, 26.0],  // SE
+      [ 22.0, 31.0],  // NE — Brigittaspitz Ost
+      [  8.0, 34.0],  // N
+      [ -6.0, 32.0],  // NW — Brigittaspitz West (Donaukanal-Abzweigung)
+    ];
+    // Top-edge glow verwendet Vector3(p[0], h, -p[1]) — gleich wie makeDistrict
+    var islandLayers = [
+      { y: 2.65, color: 0x2860c0, _base: 0.20 },  // blau-grün wie Wasser
+      { y: 2.75, color: 0x4090e0, _base: 0.50 },
+      { y: 2.85, color: 0x80c0ff, _base: 0.30 },
+    ];
+    islandLayers.forEach(function(layer) {
+      var verts = islandPts.map(function(p) { return new THREE.Vector3(p[0], layer.y, -p[1]); });
+      verts.push(verts[0].clone());
+      var geo = new THREE.BufferGeometry().setFromPoints(verts);
+      var mat = new THREE.LineBasicMaterial({color:layer.color,transparent:true,opacity:layer._base,depthWrite:false,blending:THREE.AdditiveBlending});
+      sc.add(new THREE.Line(geo, mat));
+    });
+
+    // Label — gleicher Stil wie Nussdorf-Label (aufrecht, AdditiveBlending)
+    var lc = document.createElement('canvas');
+    lc.width = 1024; lc.height = 200;
+    var lctx = lc.getContext('2d');
+    lctx.clearRect(0, 0, 1024, 200);
+    lctx.font = 'bold 120px "IM Fell English", Georgia, serif';
+    lctx.textAlign = 'left';
+    lctx.textBaseline = 'middle';
+    lctx.fillStyle = 'rgba(100, 180, 255, 1.0)';
+    lctx.fillText('Donauinsel', 30, 100);
+    var ltex = new THREE.CanvasTexture(lc);
+    ltex.minFilter = THREE.LinearFilter;
+    ltex.magFilter = THREE.LinearFilter;
+    var lmat = new THREE.MeshBasicMaterial({map:ltex,transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.2), lmat);
+    lmesh.rotation.y = 0;
+    lmesh.position.set(6.0, 8.0, -30.0); // über der Insel
     sc.add(lmesh);
   })();
 
