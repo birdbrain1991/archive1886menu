@@ -68,7 +68,7 @@ var STORIES = [
   { file: 'Story1-Important_Notice.pdf',         location: null },
   { file: 'Story2-Prologue_The_Nachtrapp.pdf',   location: { x: -11.0, z: -1.0, label: null } },
   { file: 'Story3-A_Whole_Bloody_Affair.pdf',    locations: [ { x: -17.7, z: -18.9, label: 'Nussdorf' }, { x: -18.7, z: -44.9, label: 'Klosterneuburg' } ] },
-  { file: 'Story4-Words_in_the_Flesh.pdf',       locations: [ { x: -11.0, z: -2.5, label: 'Order of the Second Serpent' } ] }
+  { file: 'Story4-Words_in_the_Flesh.pdf',       locations: [ { x: -14.0, z: -2.5, label: 'Order of the Second Serpent' } ] }
 ];
 
 var list = document.getElementById('story-list');
@@ -122,14 +122,26 @@ function spawnOneBeam(loc) {
 
   if (loc.label) {
     var lc = document.createElement('canvas');
-    lc.width = 1024; lc.height = 200;
+    lc.width = 2048; lc.height = 400;
     var lctx = lc.getContext('2d');
-    lctx.clearRect(0, 0, 1024, 200);
+    lctx.clearRect(0, 0, 2048, 400);
     lctx.font = 'bold 144px "IM Fell English", Georgia, serif';
     lctx.textAlign = 'left';
     lctx.textBaseline = 'middle';
     lctx.fillStyle = 'rgba(255, 220, 120, 1.0)';
-    lctx.fillText(loc.label, 40, 100);
+    var lines = loc.label.indexOf('\n') !== -1
+      ? loc.label.split('\n')
+      : (function() {
+          var words = loc.label.split(' ');
+          var mid = Math.ceil(words.length / 2);
+          return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+        })();
+    if (lines.length > 1) {
+      lctx.fillText(lines[0], 40, 130);
+      lctx.fillText(lines[1], 40, 280);
+    } else {
+      lctx.fillText(lines[0], 40, 200);
+    }
     var ltex = new THREE.CanvasTexture(lc);
     ltex.minFilter = THREE.LinearFilter;
     ltex.magFilter = THREE.LinearFilter;
@@ -137,9 +149,9 @@ function spawnOneBeam(loc) {
       map: ltex, transparent: true, depthWrite: false,
       side: THREE.DoubleSide, blending: THREE.AdditiveBlending
     });
-    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.5), lmat);
+    var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(28, 5), lmat);
     lmesh.rotation.y = 0;
-    lmesh.position.set(loc.x + 8, 7, loc.z);
+    lmesh.position.set(loc.x + 15, 7, loc.z);
     sc.add(lmesh);
     activeLabels.push(lmesh);
   }
