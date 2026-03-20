@@ -69,7 +69,7 @@ var STORIES = [
   { file: 'Story2-Prologue_The_Nachtrapp.pdf',   location: { x: -11.0, z: -1.0, label: 'Judengasse' } },
   { file: 'Story3-A_Whole_Bloody_Affair.pdf',    locations: [ { x: -17.7, z: -18.9, label: 'Nussdorf' }, { x: -18.7, z: -44.9, label: 'Klosterneuburg' } ] },
   { file: 'Story4-Words_in_the_Flesh.pdf',       locations: [ { x: -14.0, z: -2.5, label: 'O.S.S\nSchottenring' } ] },
-{ file: 'Story5-Revelations.pdf',       locations: [ { x: -16.0, z: -5.5 }, { x: -9.7, z: -9.9 },{ x: 7.6, z: 11.9 }, { x: 4.6, z: 15.9 }, { x: -3.6, z: 11.9 },{ x: -20.6, z: 14.9 }, { x: -11.0, z: 1.0 } ] }
+{ file: 'Story5-Revelations.pdf',       locations: [ { x: -16.0, z: -5.5, label: 'Türkenstraße' }, { x: -9.7, z: -9.9, label: 'Blumauergasse' },{ x: 7.6, z: 11.9, label: 'Erdbergstraße' }, { x: 4.6, z: 15.9, label: 'Liftfaßstrasse' }, { x: -3.6, z: 11.9, label: 'Trubelgasse' },{ x: -20.6, z: 14.9, label: 'Heumühlgasse' }, { x: -11.0, z: 1.0, label: 'Stephansplatz' } ] }
 ];
 
 var list = document.getElementById('story-list');
@@ -659,11 +659,11 @@ try {
   // pts-Koordinaten [x, z_map] wie makeDistrict
   (function() {
     var islandPts = [
-      [ -8.0, 26.0],  // SW — nördlich der Mainland-Leopoldstadt NW-Ecke (pts[1]=24.7)
-      [ 18.0, 26.0],  // SE
-      [ 22.0, 31.0],  // NE — Brigittaspitz Ost
-      [  8.0, 34.0],  // N
-      [ -6.0, 32.0],  // NW — Brigittaspitz West (Donaukanal-Abzweigung)
+      [ -2.0, 20.5],  // SW
+      [ 12.0, 27.0],  // SE
+      [ 24.0, 21.5],  // NE — Brigittaspitz Ost
+      [ 21.0, 18.5],  // N
+      [  5.0, 17.5],  // NW
     ];
     // Top-edge glow verwendet Vector3(p[0], h, -p[1]) — gleich wie makeDistrict
     var islandLayers = [
@@ -695,7 +695,7 @@ try {
     var lmat = new THREE.MeshBasicMaterial({map:ltex,transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
     var lmesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.2), lmat);
     lmesh.rotation.y = 0;
-    lmesh.position.set(6.0, 8.0, -30.0); // über der Insel
+    lmesh.position.set(13.0, 8.0, -21.0); // über der Insel
     sc.add(lmesh);
   })();
 
